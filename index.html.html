@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Le Garage de la Criticité</title>
+<style>
+:root{--bg:#1B1F2A;--panel:#2B3142;--amber:#F5A623;--red:#E5484D;--green:#2FB67C;--grey:#8B93A7;--text:#fff;--soft:#F2F3F6}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Calibri,Arial,sans-serif;min-height:100vh}
+#app{max-width:1100px;margin:0 auto;padding:20px 18px 40px}
+h1{font-size:34px;margin:0 0 6px}h2{font-size:26px;margin:0 0 10px}h3{font-size:18px;margin:0 0 6px}
+p{font-size:17px;line-height:1.4;margin:6px 0}
+.muted{color:var(--grey)}.small{font-size:13px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;color:var(--grey);font-size:14px;flex-wrap:wrap}
+.pill{background:var(--panel);border-radius:20px;padding:5px 14px;color:var(--soft);font-weight:bold}
+.pill.amber{background:var(--amber);color:var(--bg)}
+.card{background:var(--panel);border-radius:14px;padding:18px;margin:10px 0}
+.card.light{background:#fff;color:var(--bg)}
+.card.win{outline:4px solid var(--amber)}
+.grid{display:grid;gap:14px}.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:760px){.g2,.g3,.g4{grid-template-columns:1fr}}
+.btn{background:var(--amber);color:var(--bg);border:0;border-radius:12px;padding:14px 22px;font-size:18px;font-weight:bold;cursor:pointer;font-family:inherit}
+.btn:disabled{opacity:.4;cursor:default}
+.btn.ghost{background:var(--panel);color:var(--soft)}
+.btn.big{width:100%;text-align:left;padding:18px;font-size:20px;line-height:1.3}
+.btn.chosen{outline:4px solid #fff}
+input{font-size:20px;padding:12px 14px;border-radius:10px;border:0;width:100%;font-family:inherit}
+.badge{display:inline-flex;width:38px;height:38px;border-radius:50%;background:var(--amber);color:var(--bg);font-weight:bold;align-items:center;justify-content:center;margin-right:10px;flex:none;font-size:20px}
+.badge.grey{background:var(--grey)}
+.code{font-size:84px;font-weight:bold;letter-spacing:14px;color:var(--amber);text-align:center;margin:8px 0}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.timer{height:12px;background:var(--panel);border-radius:6px;overflow:hidden;margin-top:14px}
+#tbar{height:100%;width:100%;background:var(--amber)}
+.tsec{text-align:right;color:var(--grey);font-size:14px;margin-top:4px}
+.calc{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:10px 0}
+.box{background:var(--soft);color:var(--bg);border-radius:10px;padding:6px 12px;text-align:center;min-width:58px}
+.box b{display:block;font-size:26px}.box span{font-size:11px}
+.box.res{background:var(--grey);color:var(--bg)}.box.res.win{background:var(--amber)}
+.op{font-weight:bold;font-size:20px}
+.row{display:flex;align-items:center;gap:10px;margin:6px 0}
+.rank{width:28px;color:var(--grey);font-weight:bold}
+.vote{height:22px;background:var(--grey);border-radius:6px;position:relative;overflow:hidden}
+.vote i{position:absolute;left:0;top:0;bottom:0;background:var(--amber)}
+.vote span{position:relative;padding-left:8px;color:var(--bg);font-weight:bold;font-size:14px}
+.bars .row b{width:210px;font-size:15px}
+.hbar{flex:1;background:var(--bg);border-radius:6px;overflow:hidden;height:30px}
+.hbar i{display:block;height:100%;background:var(--grey);color:var(--bg);font-weight:bold;padding:5px 10px;font-size:16px;white-space:nowrap}
+.hbar i.top{background:var(--red)}.hbar i.mid{background:var(--amber)}
+.banner{background:var(--bg);border:2px solid var(--amber);border-radius:12px;padding:12px 16px;font-weight:bold;margin-top:12px}
+.ok{color:var(--green)}.ko{color:var(--red)}
+.pod{display:flex;gap:16px;align-items:flex-end;justify-content:center;margin:18px 0}
+.pod div{background:var(--panel);border-radius:12px 12px 0 0;padding:14px 18px;text-align:center;min-width:140px}
+.pod .p1{height:190px;background:var(--amber);color:var(--bg)}.pod .p2{height:150px}.pod .p3{height:120px}
+.pod b{font-size:22px;display:block}
+.err{background:var(--red);color:#fff;border-radius:10px;padding:10px 14px;margin:10px 0}
+.delta{color:var(--green);font-weight:bold;margin-left:8px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+/* ===================== Données du jeu ===================== */
+var PREFIX = 'garage-crit-';
+var L = 'ABCD';
+function P(name, G, O, D, desc, comment){ return {name:name, G:G, O:O, D:D, desc:desc, comment:comment||'', score:G*O*D}; }
+
+var Q = [
+  { id:'d1', type:'duel', title:'Manche 1 · Duel au garage', ask:'Quelle panne est la plus critique ?', time:30,
+    items:[ P('Courroie de distribution qui casse',5,2,4,"Sur autoroute, le moteur ne s'en remet pas.",'Grave, rare, et aucun signe avant-coureur.'),
+            P('Autoradio qui grésille',1,4,1,"Agaçant sur un long trajet, mais on l'entend tout de suite.",'Pénible, très visible, sans danger.') ],
+    takeaway:"Grave + invisible = priorité, même si c'est rare. Le bruit (la radio) ne fait pas le risque." },
+  { id:'d2', type:'duel', title:'Manche 2 · Duel au garage', ask:'Quelle panne est la plus critique ?', time:30,
+    items:[ P('Airbag défectueux',5,1,5,'Il ne se déclenchera pas en cas de choc. Impossible à tester en roulant.','Très grave, rarissime, invisible.'),
+            P('Pneu qui perd de la pression',4,4,3,'Une petite fuite lente, au quotidien. Le voyant est parfois ignoré.','Grave à vitesse élevée, fréquent, à moitié détecté.') ],
+    takeaway:"Piège classique : on regarde la gravité seule. Une panne moins spectaculaire mais fréquente peut peser plus lourd." },
+  { id:'rank', type:'rank', title:'Manche 3 · Le podium des pannes', ask:'Touchez les pannes de la plus critique (1er) à la moins critique.', time:60,
+    items:[ P('Batterie à plat au démarrage',2,4,3,'Fréquente en hiver, surtout sur les petits trajets.'),
+            P('Plaquettes de frein usées, sans témoin',5,3,4,"Elles s'usent sans bruit, jusqu'au freinage d'urgence."),
+            P('Essuie-glace fatigué',2,4,1,'Ça racle sous la pluie, mais ça se voit tout de suite.'),
+            P('Fuite de liquide de refroidissement',4,3,3,'Le niveau baisse peu à peu, le moteur peut finir par chauffer.') ],
+    takeaway:"Plaquettes : grave ET invisible, c'est la priorité n°1 de l'atelier." },
+  { id:'bonus', type:'num', title:'Bonus · Le mécano à la rescousse', time:30,
+    ask:"Les plaquettes reçoivent un voyant d'usure fiable : la Détection passe de 4 à 1. Quelle est la nouvelle criticité ?",
+    base:{G:5,O:3,D:4}, after:{G:5,O:3,D:1}, answer:15,
+    takeaway:"Le voyant ne répare rien : il rend la panne visible à temps. C'est le levier Détection." }
+];
+Q.forEach(function(q){
+  if(q.type==='duel'){ q.winner = q.items[0].score >= q.items[1].score ? 0 : 1; }
+  if(q.type==='rank'){ q.order = q.items.map(function(_,i){return i;}).sort(function(a,b){return q.items[b].score-q.items[a].score;}); }
+});
+
+/* ===================== Score (fonction pure) ===================== */
+function scoreAnswer(q, val, frac){
+  var speed = Math.round(50*Math.max(0,Math.min(1,frac)));
+  if(q.type==='duel'){ var ok = val===q.winner; return {pts: ok?100+speed:0, ok:ok}; }
+  if(q.type==='rank'){
+    var exact = Array.isArray(val) && val.length===q.order.length && val.every(function(v,i){return v===q.order[i];});
+    if(exact) return {pts:150+speed, ok:true};
+    return {pts:(Array.isArray(val)&&val[0]===q.order[0])?50:0, ok:false};
+  }
+  if(q.type==='num'){
+    if(val===q.answer) return {pts:100+speed, ok:true};
+    return {pts:Math.abs(val-q.answer)<=5?30:0, ok:false};
+  }
+  return {pts:0, ok:false};
+}
+
+/* ===================== Utilitaires ===================== */
+function esc(s){ return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+function $(id){ return document.getElementById(id); }
+var role=null, H=null, V=null, ME=null, peer=null, hostConn=null, tickTimer=null;
+var local={qi:-2, sel:[], num:''};
+var tEnd=0, tTot=1, netErr='', lastJoin=null;
+
+function loadPeerLib(cb){
+  if(window.Peer) return cb();
+  var urls=['https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js','https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js'];
+  var i=0;
+  (function next(){
+    if(i>=urls.length) return cb('Impossible de charger la bibliothèque réseau (PeerJS). Le réseau bloque peut-être les CDN.');
+    var s=document.createElement('script'); s.src=urls[i++]; s.onload=function(){cb();}; s.onerror=next; document.head.appendChild(s);
+  })();
+}
+function getPid(){
+  try{ var p=localStorage.getItem('gc_pid'); if(!p){ p='p'+Math.random().toString(36).slice(2,10); localStorage.setItem('gc_pid',p);} return p; }
+  catch(e){ if(!getPid.mem) getPid.mem='p'+Math.random().toString(36).slice(2,10); return getPid.mem; }
+}
+function makeCode(){ var a='ABCDEFGHJKLMNPQRSTUVWXYZ',c=''; for(var i=0;i<4;i++) c+=a[Math.floor(Math.random()*a.length)]; return c; }
+
+/* ===================== ANIMATEUR : logique ===================== */
+function startHost(){
+  netErr=''; role='host'; render();
+  loadPeerLib(function(err){
+    if(err){ netErr=err; role=null; return render(); }
+    openHostPeer();
+  });
+}
+function openHostPeer(){
+  var code=makeCode();
+  peer=new Peer(PREFIX+code);
+  peer.on('open',function(){
+    H={code:code, phase:'lobby', qi:-1, endsAt:0, players:{}, conns:{}, ans:{}};
+    peer.on('connection',function(conn){
+      conn.on('data',function(m){ hostOnMsg(conn,m); });
+      conn.on('close',function(){ hostOnClose(conn); });
+    });
+    if(tickTimer) clearInterval(tickTimer);
+    tickTimer=setInterval(hostTick,300);
+    render();
+  });
+  peer.on('error',function(e){
+    if(e && e.type==='unavailable-id'){ try{peer.destroy();}catch(x){} return openHostPeer(); }
+    netErr='Erreur réseau : '+(e&&e.type?e.type:e); render();
+  });
+}
+function hostOnMsg(conn,m){
+  if(!H||!m) return;
+  if(m.t==='join'){
+    var pid=String(m.pid||''), name=String(m.name||'Joueur').trim().slice(0,16)||'Joueur';
+    if(!pid) return;
+    var p=H.players[pid];
+    if(!p){
+      var taken=Object.keys(H.players).map(function(k){return H.players[k].name;}), n=name, i=2;
+      while(taken.indexOf(n)>=0) n=name+' '+(i++);
+      p=H.players[pid]={name:n,score:0,last:0,connected:true};
+    } else { p.connected=true; }
+    H.conns[pid]=conn; conn._pid=pid;
+    sendTo(pid); render();
+    if(H.phase==='lobby') broadcast();
+  }
+  if(m.t==='ans'){
+    var id=conn._pid, q=Q[H.qi];
+    if(!id||H.phase!=='question'||m.qi!==H.qi||H.ans[id]||!H.players[id]) return;
+    var val=cleanVal(q,m.val); if(val===null) return;
+    H.ans[id]={val:val, at:Date.now()};
+    sendTo(id); render();
+  }
+}
+function cleanVal(q,v){
+  if(q.type==='duel') return (v===0||v===1)?v:null;
+  if(q.type==='num'){ v=Number(v); return (isFinite(v)&&v>=0&&v<=9999)?Math.round(v):null; }
+  if(q.type==='rank'){
+    if(!Array.isArray(v)||v.length!==q.items.length) return null;
+    var seen={}; for(var i=0;i<v.length;i++){ if(!(v[i]>=0&&v[i]<q.items.length)||seen[v[i]]) return null; seen[v[i]]=1; }
+    return v.slice();
+  }
+  return null;
+}
+function hostOnClose(conn){
+  if(!H||!conn._pid) return;
+  var p=H.players[conn._pid];
+  if(p&&H.conns[conn._pid]===conn){ p.connected=false; delete H.conns[conn._pid]; render(); if(H.phase==='lobby') broadcast(); }
+}
+function hostTick(){
+  if(!H||H.phase!=='question') return;
+  var conn=Object.keys(H.players).filter(function(id){return H.players[id].connected;});
+  if(Date.now()>=H.endsAt || (conn.length>0 && conn.every(function(id){return H.ans[id];}))) doReveal();
+}
+function startQ(i){
+  var q=Q[i]; H.qi=i; H.phase='question'; H.ans={}; H.endsAt=Date.now()+q.time*1000;
+  Object.keys(H.players).forEach(function(id){H.players[id].last=0;});
+  broadcast(); render();
+}
+function doReveal(){
+  if(!H||H.phase!=='question') return;
+  var q=Q[H.qi];
+  Object.keys(H.players).forEach(function(id){
+    var a=H.ans[id], p=H.players[id];
+    if(a){ var frac=(H.endsAt-a.at)/(q.time*1000), r=scoreAnswer(q,a.val,frac); a.pts=r.pts; a.ok=r.ok; p.score+=r.pts; p.last=r.pts; }
+    else p.last=0;
+  });
+  H.phase='reveal'; broadcast(); render();
+}
+function hostNext(){
+  if(!H) return;
+  if(H.phase==='lobby'){ H.phase='intro'; }
+  else if(H.phase==='intro'){ return startQ(0); }
+  else if(H.phase==='question'){ return doReveal(); }
+  else if(H.phase==='reveal'){ if(H.qi<Q.length-1) return startQ(H.qi+1); H.phase='levers'; }
+  else if(H.phase==='levers'){ H.phase='final'; }
+  else if(H.phase==='final'){
+    H.phase='lobby'; H.qi=-1; H.ans={};
+    Object.keys(H.players).forEach(function(id){H.players[id].score=0;H.players[id].last=0;});
+  }
+  broadcast(); render();
+}
+function pubQ(q,full){
+  var o={id:q.id,type:q.type,title:q.title,ask:q.ask,time:q.time};
+  if(q.items) o.items=q.items.map(function(i){ return full?i:{name:i.name,desc:i.desc}; });
+  if(q.type==='num'){ o.base=q.base; if(full) o.after=q.after; }
+  if(full){ o.winner=q.winner; o.order=q.order; o.answer=q.answer; o.takeaway=q.takeaway; }
+  return o;
+}
+function revStats(q){
+  var ids=Object.keys(H.ans), r={n:ids.length};
+  if(q.type==='duel'){ r.votes=[0,0]; ids.forEach(function(id){r.votes[H.ans[id].val]++;}); }
+  if(q.type==='rank'){ r.exact=ids.filter(function(id){return H.ans[id].ok;}).length; r.first=ids.filter(function(id){return H.ans[id].val[0]===q.order[0];}).length; }
+  if(q.type==='num'){ r.exact=ids.filter(function(id){return H.ans[id].ok;}).length; r.dist={}; ids.forEach(function(id){var k=H.ans[id].val; r.dist[k]=(r.dist[k]||0)+1;}); }
+  return r;
+}
+function makeView(){
+  var q=H.qi>=0?Q[H.qi]:null, ids=Object.keys(H.players);
+  var conn=ids.filter(function(id){return H.players[id].connected;});
+  var board=ids.map(function(id){var p=H.players[id]; return {name:p.name,score:p.score,last:p.last||0};}).sort(function(a,b){return b.score-a.score;});
+  var v={phase:H.phase,qi:H.qi,total:Q.length,code:H.code,remainMs:Math.max(0,H.endsAt-Date.now()),
+    nplayers:conn.length,answered:conn.filter(function(id){return H.ans[id];}).length,
+    names:conn.map(function(id){return H.players[id].name;}),board:board.slice(0,10)};
+  if(q&&(H.phase==='question'||H.phase==='reveal')) v.q=pubQ(q,H.phase==='reveal');
+  if(H.phase==='reveal') v.rev=revStats(q);
+  return v;
+}
+function meFor(pid){
+  var p=H.players[pid]; if(!p) return null;
+  var ids=Object.keys(H.players).sort(function(a,b){return H.players[b].score-H.players[a].score;});
+  var a=H.ans[pid];
+  return {name:p.name,score:p.score,rank:ids.indexOf(pid)+1,of:ids.length,answered:!!a,val:a?a.val:null,pts:a?a.pts:null,ok:a?a.ok:null,last:p.last||0};
+}
+function sendTo(pid){ var c=H.conns[pid]; if(c&&c.open!==false){ try{ c.send({t:'state',v:makeView(),me:meFor(pid)}); }catch(e){} } }
+function broadcast(){ Object.keys(H.conns).forEach(sendTo); }
+
+/* ===================== JOUEUR ===================== */
+function joinGame(code,name){
+  code=String(code||'').toUpperCase().replace(/[^A-Z]/g,''); name=String(name||'').trim();
+  if(code.length!==4||!name){ netErr='Entrez le code à 4 lettres et votre prénom.'; return render(); }
+  lastJoin={code:code,name:name}; netErr=''; role='player'; V=null; ME=null; render();
+  loadPeerLib(function(err){
+    if(err){ netErr=err; role=null; return render(); }
+    try{ if(peer) peer.destroy(); }catch(e){}
+    peer=new Peer();
+    peer.on('open',function(){
+      var done=false;
+      hostConn=peer.connect(PREFIX+code,{reliable:true});
+      setTimeout(function(){ if(!done){ netErr="Partie introuvable. Vérifiez le code, ou le réseau bloque peut-être la connexion directe."; role=null; render(); } },12000);
+      hostConn.on('open',function(){ done=true; hostConn.send({t:'join',pid:getPid(),name:name}); });
+      hostConn.on('data',onPlayerMsg);
+      hostConn.on('close',function(){ netErr='Connexion perdue avec l\'animateur.'; render(); });
+    });
+    peer.on('error',function(e){ netErr='Erreur réseau : '+(e&&e.type?e.type:e); if(!V) role=null; render(); });
+  });
+}
+function onPlayerMsg(m){
+  if(!m||m.t!=='state') return;
+  netErr=''; V=m.v; ME=m.me;
+  if(V.qi!==local.qi){ local={qi:V.qi,sel:[],num:''}; }
+  tEnd=Date.now()+V.remainMs; tTot=(V.q?V.q.time:1)*1000;
+  render();
+}
+function submit(val){ if(hostConn&&V){ hostConn.send({t:'ans',qi:V.qi,val:val}); } }
+function pickDuel(i){ submit(i); }
+function pickRank(i){ var k=local.sel.indexOf(i); if(k>=0) local.sel.splice(k,1); else local.sel.push(i); render(); }
+function clearRank(){ local.sel=[]; render(); }
+function sendRank(){ if(V&&V.q&&local.sel.length===V.q.items.length) submit(local.sel.slice()); }
+function sendNum(){ var n=Number(local.num); if(local.num!==''&&isFinite(n)) submit(n); }
+
+/* ===================== Rendu ===================== */
+function render(){
+  var app=$('app'); if(!app) return;
+  if(role==='host'&&H){ V=makeView(); app.innerHTML=renderHost(V); }
+  else if(role==='host'){ app.innerHTML='<h2>Création de la partie…</h2>'+errHtml(); }
+  else if(role==='player'){ app.innerHTML=renderPlayer(); }
+  else app.innerHTML=renderHome();
+  if(role==='host'&&H){ tEnd=H.endsAt; tTot=(H.qi>=0?Q[H.qi].time:1)*1000; }
+}
+function errHtml(){ return netErr?'<div class="err">'+esc(netErr)+'</div>':''; }
+function timerHtml(){ return '<div class="timer"><div id="tbar"></div></div><div class="tsec" id="tsec"></div>'; }
+(function loop(){
+  var b=$('tbar'), s=$('tsec');
+  if(b&&s&&V&&V.phase==='question'){ var r=Math.max(0,tEnd-Date.now()); b.style.width=(100*r/tTot)+'%'; s.textContent=Math.ceil(r/1000)+' s'; }
+  if(typeof requestAnimationFrame==='function') requestAnimationFrame(loop);
+})();
+
+function renderHome(){
+  var hash=''; try{ hash=(location.hash||'').replace('#','').toUpperCase().slice(0,4); }catch(e){}
+  return '<h1>🔧 Le Garage de la Criticité</h1><p class="muted">Un jeu en ligne de 15 minutes pour comprendre la criticité (Gravité × Occurrence × Détection) avec une voiture.</p>'+errHtml()+
+  '<div class="grid g2"><div class="card"><h3>Je rejoins une partie</h3><p class="muted small">Le code à 4 lettres est affiché sur l\'écran partagé de l\'animateur.</p>'+
+  '<p><input id="jcode" maxlength="4" placeholder="CODE" value="'+esc(hash)+'" style="text-transform:uppercase;letter-spacing:6px;text-align:center"></p>'+
+  '<p><input id="jname" maxlength="16" placeholder="Votre prénom"></p>'+
+  '<p><button class="btn" style="width:100%" onclick="joinGame($(\'jcode\').value,$(\'jname\').value)">Rejoindre</button></p></div>'+
+  '<div class="card"><h3>Je suis l\'animateur</h3><p class="muted small">Créez la partie, partagez votre écran sur Teams et donnez le code dans le chat. Vous n\'avez pas besoin de jouer : les scores se calculent tout seuls.</p>'+
+  '<p><button class="btn ghost" style="width:100%" onclick="startHost()">Créer une partie</button></p></div></div>';
+}
+
+function boardHtml(v,withDelta,n){
+  var rows=v.board.slice(0,n||8).map(function(b,i){
+    return '<div class="row"><span class="rank">'+(i+1)+'</span><b style="flex:1">'+esc(b.name)+'</b><span>'+b.score+' pts</span>'+(withDelta&&b.last?'<span class="delta">+'+b.last+'</span>':'')+'</div>';
+  }).join('');
+  return rows||'<p class="muted">Aucun joueur.</p>';
+}
+function calcHtml(it,win){
+  return '<div class="calc"><div class="box"><b>'+it.G+'</b><span>Gravité</span></div><span class="op">×</span><div class="box"><b>'+it.O+'</b><span>Occurrence</span></div><span class="op">×</span><div class="box"><b>'+it.D+'</b><span>Détection</span></div><span class="op">=</span><div class="box res'+(win?' win':'')+'"><b>'+it.score+'</b><span>Criticité</span></div></div>';
+}
+function formulaCards(){
+  var c=[['⚠️','Gravité (G)','Si la panne arrive, c\'est grave comment ?','Freins qui lâchent : 5 · Radio : 1'],
+         ['🔁','Occurrence (O)','À quelle fréquence ça arrive ?','Pneu qui se dégonfle : 4 · Moteur qui explose : 1'],
+         ['👁️','Détection (D)','Est-ce qu\'on la voit venir ?','Voyant qui s\'allume : 1 · Usure cachée : 5']];
+  return '<div class="grid g3">'+c.map(function(x){return '<div class="card light"><div style="font-size:34px">'+x[0]+'</div><h3>'+x[1]+'</h3><p class="small"><i>'+x[2]+'</i></p><p class="small"><b>'+x[3]+'</b></p></div>';}).join('')+'</div>'+
+  '<div class="banner">Criticité = Gravité × Occurrence × Détection · chaque note va de 1 à 5, donc la criticité va de 1 à 125. En Détection : 1 = on la voit venir, 5 = on ne voit rien avant qu\'il soit trop tard.</div>';
+}
+function leversCards(){
+  var c=[['🔧','Prévenir','Agit sur l\'Occurrence (O)','Révision régulière, bonnes pièces, huile changée à temps.'],
+         ['👁️','Détecter','Agit sur la Détection (D)','Voyant d\'usure, capteur de pression des pneus, contrôle technique.'],
+         ['🛡️','Protéger','Agit sur la Gravité (G)','Ceinture, airbags, ABS, structure qui absorbe les chocs.']];
+  return '<div class="grid g3">'+c.map(function(x){return '<div class="card light"><div style="font-size:34px">'+x[0]+'</div><h2>'+x[1]+'</h2><p><span class="pill amber">'+x[2]+'</span></p><p>'+x[3]+'</p></div>';}).join('')+'</div>'+
+  '<p class="muted small">En pratique, on traite d\'abord les criticités les plus hautes, au-dessus d\'un seuil que chaque organisation fixe avec ses équipes Qualité / Risques. Les notes du jeu sont illustratives.</p>';
+}
+function podiumHtml(v){
+  var b=v.board, slot=function(i,c){ return b[i]?'<div class="'+c+'"><b>'+esc(b[i].name)+'</b>'+b[i].score+' pts</div>':''; };
+  return '<div class="pod">'+slot(1,'p2')+slot(0,'p1')+slot(2,'p3')+'</div>';
+}
+
+/* ---- Écran animateur ---- */
+function renderHost(v){
+  var h='<div class="top"><span>🔧 Le Garage de la Criticité</span><span><span class="pill">Code : <b>'+esc(v.code)+'</b></span> <span class="pill">'+v.nplayers+' joueur'+(v.nplayers>1?'s':'')+'</span></span></div>'+errHtml();
+  var next=function(label,dis){ return '<p style="text-align:right"><button class="btn" '+(dis?'disabled':'')+' onclick="hostNext()">'+label+'</button></p>'; };
+  var q=v.q;
+  if(v.phase==='lobby'){
+    var link=''; try{ if(/^https?:/.test(location.protocol)) link='<p class="muted small">Lien direct : '+esc(location.href.split('#')[0])+'#'+esc(v.code)+'</p>'; }catch(e){}
+    h+='<h1>Rejoignez la partie</h1><p>Ouvrez ce même fichier de jeu, cliquez sur <b>« Je rejoins une partie »</b> et entrez le code :</p><div class="code">'+esc(v.code)+'</div>'+link+
+       '<div class="card"><h3>Dans le garage ('+v.nplayers+')</h3><div class="chips">'+(v.names.map(function(n){return '<span class="pill">'+esc(n)+'</span>';}).join('')||'<span class="muted">En attente des joueurs…</span>')+'</div></div>'+next('Tout le monde est là : on commence',v.nplayers===0);
+  } else if(v.phase==='intro'){
+    h+='<h1>Comment ça marche</h1><p>Vous répondez depuis votre appareil : 2 duels A/B, 1 classement, 1 bonus. Plus vous répondez vite, plus vous marquez de points.</p>'+formulaCards()+next('Lancer la manche 1');
+  } else if(v.phase==='question'){
+    h+='<h2>'+esc(q.title)+'</h2><p>'+esc(q.ask)+'</p>';
+    if(q.type==='duel') h+='<div class="grid g2">'+q.items.map(function(it,i){return '<div class="card"><span class="badge">'+L[i]+'</span><b style="font-size:22px">'+esc(it.name)+'</b><p class="muted">'+esc(it.desc)+'</p></div>';}).join('')+'</div>';
+    if(q.type==='rank') h+='<div class="grid g4">'+q.items.map(function(it,i){return '<div class="card"><span class="badge">'+L[i]+'</span><b>'+esc(it.name)+'</b><p class="muted small">'+esc(it.desc)+'</p></div>';}).join('')+'</div>';
+    if(q.type==='num') h+='<div class="card"><p>Avant :</p>'+calcHtml({G:q.base.G,O:q.base.O,D:q.base.D,score:q.base.G*q.base.O*q.base.D})+'<p>Après : G = '+q.base.G+', O = '+q.base.O+', D = <b>1</b></p></div>';
+    h+=timerHtml()+'<p class="muted">'+v.answered+' / '+v.nplayers+' réponses reçues</p>'+next('Révéler maintenant');
+  } else if(v.phase==='reveal'){
+    var r=v.rev;
+    h+='<h2>'+esc(q.title)+' · Réponse</h2>';
+    if(q.type==='duel'){
+      h+='<div class="grid g2">'+q.items.map(function(it,i){var pct=r.n?Math.round(100*r.votes[i]/r.n):0;
+        return '<div class="card light'+(i===q.winner?' win':'')+'"><span class="badge '+(i===q.winner?'':'grey')+'">'+L[i]+'</span><b style="font-size:20px">'+esc(it.name)+'</b>'+calcHtml(it,i===q.winner)+'<p class="small"><i>'+esc(it.comment)+'</i></p><div class="vote"><i style="width:'+pct+'%"></i><span>'+r.votes[i]+' vote'+(r.votes[i]>1?'s':'')+' ('+pct+' %)</span></div></div>';}).join('')+'</div>';
+    }
+    if(q.type==='rank'){
+      var mx=q.items[q.order[0]].score;
+      h+='<div class="card bars">'+q.order.map(function(i,k){var it=q.items[i];
+        return '<div class="row"><span class="rank">'+(k+1)+'</span><b>'+L[i]+' · '+esc(it.name)+'</b><div class="hbar"><i class="'+(k===0?'top':k===1?'mid':'')+'" style="width:'+Math.max(10,100*it.score/mx)+'%">'+it.score+' = '+it.G+'×'+it.O+'×'+it.D+'</i></div></div>';}).join('')+'</div>'+
+        '<p>'+r.exact+' joueur'+(r.exact>1?'s ont':' a')+' trouvé l\'ordre exact · '+r.first+' sur '+r.n+' avaient la bonne n°1.</p>';
+    }
+    if(q.type==='num'){
+      var a=q.after;
+      h+='<div class="card light"><p>Avant : 5 × 3 × 4 = 60</p>'+calcHtml({G:a.G,O:a.O,D:a.D,score:q.answer},true)+'<p><b>−75 % de criticité</b> sans toucher à la panne.</p></div>'+
+        '<p>'+r.exact+' bonne'+(r.exact>1?'s':'')+' réponse'+(r.exact>1?'s':'')+' sur '+r.n+'.</p>';
+    }
+    h+='<div class="banner">'+esc(q.takeaway)+'</div><div class="card"><h3>Classement</h3>'+boardHtml(v,true,6)+'</div>'+next(v.qi<v.total-1?'Question suivante':'Voir les leviers');
+  } else if(v.phase==='levers'){
+    h+='<h1>Trois leviers pour baisser la criticité</h1>'+leversCards()+next('Classement final');
+  } else if(v.phase==='final'){
+    h+='<h1>🏆 Et le meilleur mécano est…</h1>'+podiumHtml(v)+'<div class="card">'+boardHtml(v,false,10)+'</div>'+
+       '<div class="card"><h3>À retenir</h3><p>1. Criticité = G × O × D, chacune notée de 1 à 5.</p><p>2. Un seul chiffre ne suffit jamais : la panne la plus grave n\'est pas toujours la plus critique.</p><p>3. Prévenir, détecter, protéger : trois leviers pour la faire baisser.</p></div>'+next('Rejouer');
+  }
+  return h;
+}
+
+/* ---- Écran joueur ---- */
+function renderPlayer(){
+  if(!V||!ME) return '<h2>Connexion à la partie…</h2><p class="muted">Cela peut prendre quelques secondes.</p>'+errHtml()+(netErr&&lastJoin?'<p><button class="btn" onclick="joinGame(lastJoin.code,lastJoin.name)">Reconnecter</button></p>':'');
+  var h='<div class="top"><span>🔧 '+esc(ME.name)+'</span><span><span class="pill">'+ME.score+' pts</span> <span class="pill">'+ME.rank+'<sup>e</sup> / '+ME.of+'</span></span></div>'+errHtml();
+  if(netErr&&lastJoin) h+='<p><button class="btn" onclick="joinGame(lastJoin.code,lastJoin.name)">Reconnecter</button></p>';
+  var q=V.q;
+  if(V.phase==='lobby') return h+'<h2>Vous êtes dans le garage 🚗</h2><p>En attente du début de la partie… ('+V.nplayers+' joueur'+(V.nplayers>1?'s':'')+' connecté'+(V.nplayers>1?'s':'')+')</p>';
+  if(V.phase==='intro') return h+'<h2>Comment ça marche</h2><p><b>Criticité = Gravité × Occurrence × Détection</b>, chacune notée de 1 à 5.</p><p>Gravité : c\'est grave comment ? · Occurrence : ça arrive souvent ? · Détection : <b>1 = on la voit venir, 5 = on ne voit rien</b>.</p><p class="muted">Regardez l\'écran de l\'animateur, la première question arrive.</p>';
+  if(V.phase==='question'){
+    h+='<h3>'+esc(q.title)+'</h3><p>'+esc(q.ask)+'</p>';
+    if(ME.answered){
+      h+='<div class="card"><h3>✅ Réponse envoyée</h3><p class="muted">En attente des autres joueurs…</p></div>'+timerHtml();
+      return h;
+    }
+    if(q.type==='duel') h+=q.items.map(function(it,i){return '<p><button class="btn big" onclick="pickDuel('+i+')"><span class="badge" style="background:var(--bg);color:var(--amber)">'+L[i]+'</span>'+esc(it.name)+'<br><span class="small" style="font-weight:normal">'+esc(it.desc)+'</span></button></p>';}).join('');
+    if(q.type==='rank'){
+      h+=q.items.map(function(it,i){var k=local.sel.indexOf(i);
+        return '<p><button class="btn big'+(k>=0?' chosen':'')+'" onclick="pickRank('+i+')"><span class="badge" style="background:var(--bg);color:var(--amber)">'+(k>=0?(k+1):L[i])+'</span>'+esc(it.name)+'</button></p>';}).join('')+
+        '<p class="muted">Ordre choisi : '+(local.sel.map(function(i){return L[i];}).join(' › ')||'—')+'</p>'+
+        '<p><button class="btn" '+(local.sel.length===q.items.length?'':'disabled')+' onclick="sendRank()">Valider mon classement</button> <button class="btn ghost" onclick="clearRank()">Effacer</button></p>';
+    }
+    if(q.type==='num') h+='<div class="card"><p>Avant : G '+q.base.G+' × O '+q.base.O+' × D '+q.base.D+' = '+(q.base.G*q.base.O*q.base.D)+'</p><p>Après : G '+q.base.G+' × O '+q.base.O+' × D <b>1</b> = ?</p></div><p><input id="num" type="number" inputmode="numeric" placeholder="Votre réponse" value="'+esc(local.num)+'" oninput="local.num=this.value"></p><p><button class="btn" onclick="sendNum()">Envoyer</button></p>';
+    return h+timerHtml();
+  }
+  if(V.phase==='reveal'){
+    var good=ME.answered&&ME.ok, part=ME.answered&&!ME.ok&&ME.pts>0;
+    h+='<div class="card"><h2 class="'+(good?'ok':part?'':'ko')+'">'+(!ME.answered?'⏱️ Pas de réponse':good?'✅ Bien joué !':part?'👍 Presque !':'❌ Pas cette fois')+'</h2><p><b>+'+(ME.pts||0)+' pts</b>'+(good?' (bonus de rapidité inclus)':'')+'</p></div>';
+    if(q.type==='duel') h+='<p>Réponse : <b>'+L[q.winner]+' · '+esc(q.items[q.winner].name)+'</b> ('+q.items[q.winner].score+' contre '+q.items[1-q.winner].score+')</p>';
+    if(q.type==='rank') h+='<p>Bon ordre : <b>'+q.order.map(function(i){return L[i];}).join(' › ')+'</b></p>';
+    if(q.type==='num') h+='<p>Bonne réponse : <b>'+q.answer+'</b> (5 × 3 × 1)</p>';
+    return h+'<div class="banner">'+esc(q.takeaway)+'</div><p class="muted">Regardez l\'écran de l\'animateur pour la suite.</p>';
+  }
+  if(V.phase==='levers') return h+'<h2>Trois leviers</h2><p><b>Prévenir</b> (agit sur O) · <b>Détecter</b> (agit sur D) · <b>Protéger</b> (agit sur G)</p>';
+  if(V.phase==='final') return h+'<h2>🏆 Partie terminée</h2><p>Vous finissez <b>'+ME.rank+'<sup>e</sup></b> sur '+ME.of+' avec <b>'+ME.score+' points</b>.</p><div class="card">'+boardHtml(V,false,5)+'</div>';
+  return h;
+}
+
+render();
+</script>
+</body>
+</html>
